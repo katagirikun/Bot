@@ -15,7 +15,7 @@ ALLOWED_GROUP_TITLE = "𝗖𝗥𝗢𝗭𝗡 𝗫 𝗦𝗞𝗜𝗡𝗦 CHAT"
 INVITE_LINK = "https://t.me/+Gf__3xcNl4sxYWFl"
 
 # ⚠️ Admin IDs (Only these users can generate codes)
-ADMIN_IDS = [123456789, 6771113570]  # Replace with actual admin user IDs
+ADMIN_IDS = [123456789, 987654321]  # Replace with actual admin user IDs
 
 # 🔑 Codes Dictionary (Stores codes that can be redeemed)
 redeem_codes = {}  # key: code, value: user_id who redeemed it
@@ -206,8 +206,6 @@ def redeem_code(message):
     bot.reply_to(message, f"🎉 **Code Redeemed Successfully!**\nYou have received `50 points`! 🎊")
 
 # ✅ Bot Start
-print("🤖 Bot is Running...")
-bot.polling()
-
 if __name__ == "__main__":
-    updater.start_polling()
+    print("🤖 Bot is Running...")
+    bot.polling()
