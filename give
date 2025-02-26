@@ -1,0 +1,210 @@
+import telebot
+import random
+
+# ✅ Bot Token
+TOKEN = "7002972622:AAHqC1F1ErSqRLu5Mlpq-g-pZc9nAWcglPM"
+bot = telebot.TeleBot(TOKEN)
+
+# 🔥 Points Dictionary (Reset on Bot Restart)
+user_points = {}
+
+# 🎯 Allowed Group Name
+ALLOWED_GROUP_TITLE = "𝗖𝗥𝗢𝗭𝗡 𝗫 𝗦𝗞𝗜𝗡𝗦 CHAT"
+
+# 📢 Group Invite Link
+INVITE_LINK = "https://t.me/+Gf__3xcNl4sxYWFl"
+
+# ⚠️ Admin IDs (Only these users can generate codes)
+ADMIN_IDS = [123456789, 6771113570]  # Replace with actual admin user IDs
+
+# 🔑 Codes Dictionary (Stores codes that can be redeemed)
+redeem_codes = {}  # key: code, value: user_id who redeemed it
+
+# 📜 Help Menu
+@bot.message_handler(commands=['all'])
+def all_commands(message):
+    bot.reply_to(message, """📜 **Commands List**  
+🎮 *Game Features:*  
+- 🏆 `/leaderboard` - See top players  
+- 📊 `/points` - Check your score  
+- 🔄 `/sendpoints @username amount` - Send points  
+- 🎰 `/bet amount` - Gamble your points (10% chance)  
+- 🎮 `/redeem code` - Redeem a code if you have one  
+- 📜 `/all` - Show this command list  
+      
+🏆 **Compete, Earn, & Win Rewards!** 🚀""", parse_mode="Markdown")
+
+# ⚠️ Start Command
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(message, f"""⚠️ **Warning:**  
+🚀 *Bot restart hone par saare points reset ho jayenge!*
+  
+🎉 **Welcome to the Giveaway!**  
+🔹 **Earn Points:**  
+   💬 *Send messages in* [this group]({INVITE_LINK}) *to earn* `+1` *point per message!*  
+   🔗 *Invite new users and get* `+20` *points!*  
+
+🎮 **Game Commands:**  
+🏆 `/leaderboard` - See the top players  
+📊 `/points` - Check your score  
+🔄 `/sendpoints @user amount` - Send points to a friend  
+🎰 `/bet amount` - Gamble your points! (10% win rate)  
+📜 `/all` - Show all available commands  
+
+🔥 **Good luck! May the best player win!**  
+""", parse_mode="Markdown")
+
+# 🔥 Message Karne Par 1 Point
+@bot.message_handler(func=lambda message: message.chat.title == ALLOWED_GROUP_TITLE)
+def give_point(message):
+    user_id = message.from_user.id
+    username = message.from_user.username or message.from_user.first_name
+
+    if user_id in user_points:
+        user_points[user_id]["points"] += 1
+    else:
+        user_points[user_id] = {"username": username, "points": 1}
+
+# 📊 Check Your Score
+@bot.message_handler(commands=['points'])
+def check_points(message):
+    user_id = message.from_user.id
+    if user_id in user_points:
+        bot.reply_to(message, f"📊 **Your Total Points:** `{user_points[user_id]['points']} 🏅`", parse_mode="Markdown")
+    else:
+        bot.reply_to(message, "❌ You have no points yet! Start chatting in the group to earn points.")
+
+# 🏆 Leaderboard
+@bot.message_handler(commands=['leaderboard'])
+def leaderboard(message):
+    if not user_points:
+        bot.reply_to(message, "❌ No users in the leaderboard yet!")
+        return
+
+    sorted_users = sorted(user_points.items(), key=lambda x: x[1]['points'], reverse=True)[:5]
+    medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
+
+    leaderboard_text = "🏆 **Leaderboard** 🏆\n\n"
+    for i, (user_id, user) in enumerate(sorted_users):
+        leaderboard_text += f"{medals[i]} @{user['username']} - `{user['points']} points`\n"
+
+    bot.reply_to(message, leaderboard_text, parse_mode="Markdown")
+
+# 🔄 Send Points
+@bot.message_handler(commands=['sendpoints'])
+def send_points(message):
+    args = message.text.split()
+    if len(args) != 3:
+        bot.reply_to(message, "❌ Format: `/sendpoints @username amount`", parse_mode="Markdown")
+        return
+
+    sender_id = message.from_user.id
+    sender_username = message.from_user.username or message.from_user.first_name
+    receiver_username = args[1].replace("@", "")
+    try:
+        amount = int(args[2])
+    except ValueError:
+        bot.reply_to(message, "❌ Please enter a valid number.")
+        return
+
+    if sender_id not in user_points or user_points[sender_id]["points"] < amount:
+        bot.reply_to(message, "❌ You don't have enough points!")
+        return
+
+    # 🟢 Find Receiver ID
+    receiver_id = None
+    for user_id, data in user_points.items():
+        if data["username"] == receiver_username:
+            receiver_id = user_id
+            break
+
+    if receiver_id is None:
+        bot.reply_to(message, "❌ User not found in the system!")
+        return
+
+    # ✅ Transfer Points
+    user_points[sender_id]["points"] -= amount
+    user_points[receiver_id]["points"] += amount
+
+    bot.reply_to(message, f"✅ **{amount} points sent to @{receiver_username}!** 🎉", parse_mode="Markdown")
+
+# 🎰 Gambling Feature (10% Win Rate)
+@bot.message_handler(commands=['bet'])
+def gamble(message):
+    args = message.text.split()
+    if len(args) != 2:
+        bot.reply_to(message, "❌ Format: `/bet amount`", parse_mode="Markdown")
+        return
+
+    user_id = message.from_user.id
+    if user_id not in user_points:
+        bot.reply_to(message, "❌ You have no points to bet!")
+        return
+
+    try:
+        bet_amount = int(args[1])
+    except ValueError:
+        bot.reply_to(message, "❌ Please enter a valid number.")
+        return
+
+    if bet_amount < 5:
+        bot.reply_to(message, "❌ Minimum bet amount is **5 points**!", parse_mode="Markdown")
+        return
+
+    if user_points[user_id]["points"] < bet_amount:
+        bot.reply_to(message, "❌ You don't have enough points to bet!")
+        return
+
+    # 🃏 **10% Chance to Win**
+    if random.randint(1, 10) == 1:  # 10% probability
+        # ✅ **Win: Double the bet amount**
+        user_points[user_id]["points"] += bet_amount
+        bot.reply_to(message, f"🎉 **Congratulations!** 🎰 You won **{bet_amount} points**! 🏆\n\n📊 **New Balance:** `{user_points[user_id]['points']} points`", parse_mode="Markdown")
+    else:
+        # ❌ **Loss: Lose the bet amount**
+        user_points[user_id]["points"] -= bet_amount
+        bot.reply_to(message, f"😢 **You lost {bet_amount} points!**\n\n💀 Better luck next time! 🍀\n\n📊 **New Balance:** `{user_points[user_id]['points']} points`", parse_mode="Markdown")
+
+# 🔑 Admin Generate Redeem Code
+@bot.message_handler(commands=['generatecode'])
+def generate_code(message):
+    if message.from_user.id not in ADMIN_IDS:
+        bot.reply_to(message, "❌ Only admins can generate codes!")
+        return
+
+    code = str(random.randint(100000, 999999))  # Generate a random 6-digit code
+    redeem_codes[code] = None  # Code is initially available to be redeemed by any user
+
+    bot.reply_to(message, f"✅ **Code Generated!**\nUse the code `{code}` to redeem points.")
+
+# 🎁 Redeem Code
+@bot.message_handler(commands=['redeem'])
+def redeem_code(message):
+    args = message.text.split()
+    if len(args) != 2:
+        bot.reply_to(message, "❌ Format: `/redeem code`", parse_mode="Markdown")
+        return
+
+    code = args[1]
+    user_id = message.from_user.id
+    if code not in redeem_codes:
+        bot.reply_to(message, "❌ This code is invalid or expired.")
+        return
+
+    if redeem_codes[code] is not None:
+        bot.reply_to(message, "❌ This code has already been redeemed.")
+        return
+
+    # Redeem the code
+    redeem_codes[code] = user_id
+    if user_id in user_points:
+        user_points[user_id]["points"] += 50  # Give 50 points as a reward
+    else:
+        user_points[user_id] = {"username": message.from_user.username or message.from_user.first_name, "points": 50}
+
+    bot.reply_to(message, f"🎉 **Code Redeemed Successfully!**\nYou have received `50 points`! 🎊")
+
+# ✅ Bot Start
+print("🤖 Bot is Running...")
+bot.polling()
