@@ -208,3 +208,6 @@ def redeem_code(message):
 # ✅ Bot Start
 print("🤖 Bot is Running...")
 bot.polling()
+
+if __name__ == "__main__":
+    updater.start_polling()
